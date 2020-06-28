@@ -16,13 +16,11 @@ latbounds = [34, 36]
 lonbounds = [-125, -126]
 
 # Extract Data at mask
-ROMS = RT.ROMS_Load(RomsFile, 'Salt', latbounds, lonbounds)
+ROMS = RT.ROMS_Load(RomsFile, 'salt', latbounds, lonbounds)
 
 #Variance budget
-#Terms 1 & 2: define scalar values
-#   Volume average
-
-#   Purturbation (prime)
+#Terms 1 & 2: define scalar values of time average and purturbation
+Salt = RT.Reynolds_Avg(ROMS['salt'])
 
 #Term 3: change in volume integrated purturbation
 #   square prime in each cell
