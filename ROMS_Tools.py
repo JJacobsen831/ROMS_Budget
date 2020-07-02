@@ -7,6 +7,8 @@ Created on Sat Jun 27 12:29:58 2020
 # ROMS data extraction for CV budget
 import numpy as np
 from netCDF4 import Dataset as dt
+import seawater as sw
+import obs_depth_JJ as dep
 
 def ROMS_Load(RomsFile, VarName, latbounds, lonbounds) :
     """Loads lat_rho/psi, lon_rho/psi, time, u, ubar, v, vbar, w, and a defined variable \
@@ -51,7 +53,39 @@ def Reynolds_Avg(Var):
     # prime value
     Var_prime = Var - Var_Tmean
     
-    ReynAvg = {'bar' : Var_Tmean, 'prime' : Var_prime}
+    ReynAvg = {'avg' : Var_Tmean, 'prime' : Var_prime}
     
     return ReynAvg
 
+def ModelDepth(RomsFile, point_type):
+    """Computes ROMS depth using obs_depth, converted from set_depth.m"""
+    #load nc file
+    RomsNC = dt(RomsFile, 'r')
+    
+    #ROMS variables
+    romsvars = {'Vtransform' : RomsNC.variables['Vtransform'], \
+                'Vstretching' : RomsNC.variables['Vstretching'], \
+                'N' : RomsNC.variables['s_rho'].size, \
+                'theta_s' : RomsNC.variables['theta_s'], \
+                'theta_b' : RomsNC.variables['theta_b'], \
+                'hc' : RomsNC.variables['hc'], \
+                'h' : RomsNC.variables['h'], \
+                'zeta' : RomsNC.variables['zeta']}
+    #compute depth
+    depth = dep._set_depth(RomsFile, romsvars, point_type, romsvars['h'], romsvars['zeta'])
+    
+    return depth
+
+
+
+def dV(ROMS_CV):
+    """Compute differential volume of each cell within a control volume"""
+    #convert horizontal location into distance b/t cells
+    dist_lat = sw.dist(ROMS_CV['lat_edge'][:,0], ROMS_CV['lon_edge'][:,0], 'km').T
+    dist_lon = sw.dist(ROMS_CV['lat_edge'][0,:], ROMS_CV['lon_edge'][0,:], 'km')
+    
+    #horizontal differential matrix
+    d_lat = np.matmul(np.array([dist_lat[0]]).T, np.ones([1, dist_lon[0].size]))
+    d_lon = np.matmul(np.array([dist_lon[0]]).T, np.ones([1, dist_lat[0].size])).T
+    
+    #convert vertical coordinate into difference

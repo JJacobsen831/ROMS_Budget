@@ -9,10 +9,10 @@ os.chdir('/Users/Jasen/Documents/GitHub/ROMS_Budget/')
 
 import ROMS_Tools as RT
 #Locate file
-RomsFile = ''
+RomsFile = '/Users/Jasen/Documents/Data/ROMS_ICBC/wc12_hycom_20090101_dnref99_ini_Darwin_NuteMap.nc'
 
 #coordinates of desired mask
-latbounds = [34, 36]
+latbounds = [35, 36]
 lonbounds = [-125, -126]
 
 # Extract Data at mask
