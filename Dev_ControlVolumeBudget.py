@@ -11,16 +11,22 @@ import ROMS_Tools as RT
 #Locate file
 RomsFile = '/Users/Jasen/Documents/Data/ROMS_ICBC/wc12_hycom_20090101_dnref99_ini_Darwin_NuteMap.nc'
 
-#coordinates of desired mask
+#coordinates of desired control volume
 latbounds = [35, 36]
 lonbounds = [-125, -126]
 
+#create control volume
+IndBounds = RT.RhoPsiIndex(RomsFile, latbounds, lonbounds)
+
 # Extract Data at mask
-ROMS = RT.ROMS_Load(RomsFile, 'salt', latbounds, lonbounds)
+ROMS_CV = RT.ROMS_CV_Load(RomsFile, 'salt', IndBounds)
+
+#compute depth
+ROMS_CV['depth_w'] = RT.ModelDepth(RomsFile, 'w', latbounds, lonbounds)
 
 #Variance budget
 #Terms 1 & 2: define scalar values of time average and purturbation
-Salt = RT.Reynolds_Avg(ROMS['salt'])
+Salt = RT.Reynolds_Avg(ROMS_CV['salt'])
 
 #Term 3: change in volume integrated purturbation
 #   square prime in each cell
