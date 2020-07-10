@@ -85,7 +85,6 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
     s, C = _stretching(romsvars=romsvars, use_w=use_w)
     
     
-
     if romsvars['Vstretching'] == 1:
         #Indices to "shift" averaging grid
         N = romsvars['N']
@@ -107,8 +106,8 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             #average bathymetry and free surface
             hp = 0.25*(h[0:L, 0:M] + h[1:Lp, 0:M] + \
                        h[0:L, 1:Mp] + h[1:Lp, 1:Mp])
-            zetap = 0.25*(zeta[0:L, 0:M] + zeta[1:Lp, 0:M] + \
-                          zeta[0:L, 1:Mp]+zeta[1:Lp, 1:Mp])
+            zetap = 0.25*(zeta[:, 0:L, 0:M] + zeta[:, 1:Lp, 0:M] + \
+                          zeta[:, 0:L, 1:Mp] + zeta[:, 1:Lp, 1:Mp])
             
             #compute depth
             for k in range(z.shape[0]):
@@ -118,7 +117,7 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
         elif point_type in [3, 'u']:
             #averaging
             hu = 0.5*(h[0:L, 0:Mp] + h[1:Lp, 0:Mp])
-            zetau = 0.5*(zeta[0:L, 0:Mp] + zeta[1:Lp, 0:Mp])
+            zetau = 0.5*(zeta[:, 0:L, 0:Mp] + zeta[:, 1:Lp, 0:Mp])
             
             #compute depth
             for k in range(z.shape[0]):
@@ -128,7 +127,7 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
         elif point_type in [4, 'v']:
             #averaging
             hv = 0.5*(h[0:Lp, 0:M] + h[0:Lp, 1:Mp])
-            zetav = 0.5(zeta[0:Lp, 0:M] + zeta[0:Lp, 1:Mp])
+            zetav = 0.5*(zeta[:, 0:Lp, 0:M] + zeta[:, 0:Lp, 1:Mp])
             
             #compute depth
             for k in range(z.shape[0]):
