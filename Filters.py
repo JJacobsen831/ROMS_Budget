@@ -28,16 +28,28 @@ def godinfilt(xin, skip_ind = 0) :
         temp_filt = np.convolve(filter24, filter24)
         filt = np.convolve(temp_filt, filter25)
         
-        #apply filter to time series
+        #cutoff for filter edges
         a = np.int(np.round(filt.size/2))
+        indmax = a+x_shape[0]
+        
+        #convert to ndarray object
+        xin = xin.astype(np.ndarray)
+        
+        #apply filter to time series
+        if len(xin.shape) > 1: 
+            for i, col in enumerate(xin.T):
+                temp = np.convolve(col, filt)
+                xnew[:,i] = temp[a:indmax]
                 
-        for i, col in enumerate(xin.T):
-            temp = np.convolve(np.ndarray.flatten(col), filt)
-            xnew[:,i] = temp[a:a+x_shape[0]]
+                xfilt = xnew
+        else: 
+            temp = np.convolve(xin, filt)
+            x_new = temp[a:indmax]
             
-        xfilt = xnew
+            xfilt = x_new
             
     elif skip_ind == 1 :
             xfilt = xin
     
-    return xfilt
+    return (xfilt, a)
+

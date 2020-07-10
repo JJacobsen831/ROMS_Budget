@@ -8,9 +8,11 @@ Created on Sat Jun 27 12:29:58 2020
 import numpy as np
 from netCDF4 import Dataset as dt
 import obs_depth_JJ as dep
+from Filters import godinfilt 
+
 
 def RhoPsiIndex(RomsFile, latbounds, lonbounds):
-    """locates indices of lat and lon within ROMS Output File """
+    """locates indices of lat and lon within ROMS Output File assuming regular spacing"""
     #load nc file
     RomsNC = dt(RomsFile, 'r')
     
@@ -53,8 +55,6 @@ def RhoPsiIndex(RomsFile, latbounds, lonbounds):
     IndBounds = {'Rho' : RhoInd,'Psi' : PsiInd}
     
     return IndBounds
-    
-    
 
 
 def ROMS_CV_Load(RomsFile, VarName, IndBounds) :
@@ -88,6 +88,7 @@ def ROMS_CV_Load(RomsFile, VarName, IndBounds) :
         
     return ROMS_CV
 
+
 def ROMS_CV_AddVar(RomsFile, ROMS_CV, VarName, IndBounds):
     """Add variable to ROMS control volume dictionary """
     RomsNC = dt(RomsFile, 'r')
@@ -98,9 +99,9 @@ def ROMS_CV_AddVar(RomsFile, ROMS_CV, VarName, IndBounds):
            IndBounds['Rho']['lon_li']:IndBounds['Rho']['lon_ui']], dtype = np.float64)
     
     return ROMS_CV
-    
 
-def Reynolds_Avg(Var):
+
+def Reynolds_Avg_Boxcar(Var):
     """takes temporal average at each grid cell and subtracts to get avg and prime terms """
     # temporal mean
     Var_Tmean = np.mean(Var, axis = 0)
@@ -109,6 +110,27 @@ def Reynolds_Avg(Var):
     Var_prime = Var - Var_Tmean
     
     ReynAvg = {'avg' : Var_Tmean, 'prime' : Var_prime}
+    
+    return ReynAvg
+
+def Reynolds_Avg_Godin(Var, Time):
+    """applies godin filter to remove tidal signal and returns avg and prime 
+    NOTE: Time should be in hourly increments with units of seconds"""
+    #check time spacing
+    if np.mean(np.diff(Time)) != 3600:
+        raise NotImplementedError('Time not in hourly increments')
+    
+    #apply godin filter    
+    Tmean, Filtedge = godinfilt(Var)
+    
+    #pad ends with nan
+    Tmean[0:Filtedge] = np.nan
+    Tmean[-Filtedge:-1] = np.nan
+    Tmean[-1] = np.nan
+    
+    prime = Var - Tmean
+    
+    ReynAvg = {'avg' : Tmean, 'prime' : prime}
     
     return ReynAvg
 

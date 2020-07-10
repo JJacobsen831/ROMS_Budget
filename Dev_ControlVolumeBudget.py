@@ -6,14 +6,15 @@ Created on Sat Jun 27 11:22:20 2020
 """
 import os
 os.chdir('/Users/Jasen/Documents/GitHub/ROMS_Budget/')
-
 import ROMS_Tools as RT
+
+
 #Locate file
 RomsFile = '/Users/Jasen/Documents/Data/ROMS_ICBC/wc12_hycom_20090101_dnref99_ini_Darwin_NuteMap.nc'
 
 #coordinates of desired control volume
-latbounds = [35, 36]
-lonbounds = [-125, -126]
+latbounds = [35, 37]
+lonbounds = [-126, -125]
 
 #create control volume
 IndBounds = RT.RhoPsiIndex(RomsFile, latbounds, lonbounds)

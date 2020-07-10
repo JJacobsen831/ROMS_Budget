@@ -5,6 +5,7 @@ Created on Tue Jun  2 13:03:41 2015
 @author: pmattern
 
 Borrowed by jjacobsen on June 26, 2020
+    Added psi, u, & v depths to _set_depth. July 9, 2020
 """
 
 import netCDF4 as nc4
@@ -82,12 +83,19 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
     use_w = point_type in [5, 'w']
 
     s, C = _stretching(romsvars=romsvars, use_w=use_w)
+    
+    
 
     if romsvars['Vstretching'] == 1:
-        
+        #Indices to "shift" averaging grid
         N = romsvars['N']
+        Lp, Mp = romsvars['h'].shape
+        L = Lp - 1
+        M = Mp - 1
+        
         z = np.empty((N+use_w, h.shape[0], h.shape[1]))
         z.fill(np.nan)
+        
         if point_type in [1, 'rho', 'density']:
             hr = h
             zetar = zeta
@@ -95,12 +103,38 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hr
                 z[k, :, :] = z0 + zetar*(1.0 + z0/hr)
 
-        elif point_type in [2, 'psi', 'streamfunction']:
-            raise NotImplementedError('Point type not supported yet.')
+        elif point_type in [2, 'psi', 'streamfunction']:         
+            #average bathymetry and free surface
+            hp = 0.25*(h[0:L, 0:M] + h[1:Lp, 0:M] + \
+                       h[0:L, 1:Mp] + h[1:Lp, 1:Mp])
+            zetap = 0.25*(zeta[0:L, 0:M] + zeta[1:Lp, 0:M] + \
+                          zeta[0:L, 1:Mp]+zeta[1:Lp, 1:Mp])
+            
+            #compute depth
+            for k in range(z.shape[0]):
+                z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hp
+                z[k, :, :] = z0 + zetap*(1.0 + z0/hr)
+            
         elif point_type in [3, 'u']:
-            raise NotImplementedError('Point type not supported yet.')
+            #averaging
+            hu = 0.5*(h[0:L, 0:Mp] + h[1:Lp, 0:Mp])
+            zetau = 0.5*(zeta[0:L, 0:Mp] + zeta[1:Lp, 0:Mp])
+            
+            #compute depth
+            for k in range(z.shape[0]):
+                z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hu
+                z[k, :, :] = z0 + zetau*(1.0 + z0/hu)
+            
         elif point_type in [4, 'v']:
-            raise NotImplementedError('Point type not supported yet.')
+            #averaging
+            hv = 0.5*(h[0:Lp, 0:M] + h[0:Lp, 1:Mp])
+            zetav = 0.5(zeta[0:Lp, 0:M] + zeta[0:Lp, 1:Mp])
+            
+            #compute depth
+            for k in range(z.shape[0]):
+                z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hv
+                z[k, :, :] = z0 + zetav*(1.0 + z0/hv)
+            
         elif use_w:
             hr = h
             zetar = zeta
@@ -112,60 +146,7 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             raise RuntimeError('Invalid point_type "{}".'.format(point_type))
     else:
         raise NotImplementedError('Vstretching > 1 not supported yet.')
-        '''
-        matlab code:
-
-        switch ( igrid ),
-          case 1
-            hr=h;
-            zetar=zeta;
-          case 2
-            hp=0.25.*(h(1:L,1:M)+h(2:Lp,1:M)+h(1:L,2:Mp)+h(2:Lp,2:Mp));
-            zetap=0.25.*(zeta(1:L,1:M )+zeta(2:Lp,1:M )+                        ...
-                         zeta(1:L,2:Mp)+zeta(2:Lp,2:Mp));
-          case 3
-            hu=0.5.*(h(1:L,1:Mp)+h(2:Lp,1:Mp));
-            zetau=0.5.*(zeta(1:L,1:Mp)+zeta(2:Lp,1:Mp));
-          case 4
-            hv=0.5.*(h(1:Lp,1:M)+h(1:Lp,2:Mp));
-            zetav=0.5.*(zeta(1:Lp,1:M)+zeta(1:Lp,2:Mp));
-          case 5
-            hr=h;
-            zetar=zeta;
-        end,
-
-        if (Vtransform == 1),
-          switch ( igrid ),
-            case 1
-              for k=1:N,
-            z0=(s(k)-C(k))*hc + C(k).*hr;
-                z(:,:,k)=z0 + zetar.*(1.0 + z0./hr);
-              end
-            case 2
-              for k=1:N,
-                z0=(s(k)-C(k))*hc + C(k).*hp;
-                z(:,:,k)=z0 + zetap.*(1.0 + z0./hp);
-              end
-            case 3
-              for k=1:N,
-                z0=(s(k)-C(k))*hc + C(k).*hu;
-                z(:,:,k)=z0 + zetau.*(1.0 + z0./hu);
-              end
-            case 4
-              for k=1:N,
-                z0=(s(k)-C(k))*hc + C(k).*hv;
-                z(:,:,k)=z0 + zetav.*(1.0 + z0./hv);
-              end
-            case 5
-              z(:,:,1)=-hr;
-              for k=2:Np,
-                z0=(s(k)-C(k))*hc + C(k).*hr;
-                z(:,:,k)=z0 + zetar.*(1.0 + z0./hr);
-              end
-          end,
-        elseif ...
-
-        '''
+        
     return z
 
 
