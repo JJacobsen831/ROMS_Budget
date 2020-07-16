@@ -142,7 +142,8 @@ def ModelDepth(RomsFile, point_type, IndBounds):
        
     #ROMS variables
     romsvars = {'h' : RomsNC.variables['h'], \
-                'zeta' : RomsNC.variables['zeta']}
+                'zeta' : RomsNC.variables['zeta'],\
+                'N' : RomsNC.variables['Cs_r'].size}
     #compute depth
     depth_domain = dep._set_depth(RomsFile, None, point_type, romsvars['h'], romsvars['zeta'])
     

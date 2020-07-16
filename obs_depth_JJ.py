@@ -92,12 +92,15 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
         L = Lp - 1
         M = Mp - 1
         
-        z = np.empty((N+use_w, h.shape[0], h.shape[1]))
-        z.fill(np.nan)
+        
         
         if point_type in [1, 'rho', 'density']:
             hr = h
             zetar = zeta
+            
+            z = np.empty((N+use_w, hr.shape[0], hr.shape[1]))
+            z.fill(np.nan)
+            
             for k in range(z.shape[0]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hr
                 z[k, :, :] = z0 + zetar*(1.0 + z0/hr)
@@ -109,15 +112,21 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             zetap = 0.25*(zeta[:, 0:L, 0:M] + zeta[:, 1:Lp, 0:M] + \
                           zeta[:, 0:L, 1:Mp] + zeta[:, 1:Lp, 1:Mp])
             
+            z = np.empty((N+use_w, hp.shape[0], hp.shape[1]))
+            z.fill(np.nan)
+            
             #compute depth
             for k in range(z.shape[0]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hp
-                z[k, :, :] = z0 + zetap*(1.0 + z0/hr)
+                z[k, :, :] = z0 + zetap*(1.0 + z0/hp)
             
         elif point_type in [3, 'u']:
             #averaging
             hu = 0.5*(h[0:L, 0:Mp] + h[1:Lp, 0:Mp])
             zetau = 0.5*(zeta[:, 0:L, 0:Mp] + zeta[:, 1:Lp, 0:Mp])
+            
+            z = np.empty((N+use_w, hu.shape[0], hu.shape[1]))
+            z.fill(np.nan)
             
             #compute depth
             for k in range(z.shape[0]):
@@ -129,6 +138,9 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             hv = 0.5*(h[0:Lp, 0:M] + h[0:Lp, 1:Mp])
             zetav = 0.5*(zeta[:, 0:Lp, 0:M] + zeta[:, 0:Lp, 1:Mp])
             
+            z = np.empty((N+use_w, hv.shape[0], hv.shape[1]))
+            z.fill(np.nan)
+            
             #compute depth
             for k in range(z.shape[0]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hv
@@ -137,6 +149,10 @@ def _set_depth(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
         elif use_w:
             hr = h
             zetar = zeta
+            
+            z = np.empty((N+use_w, h.shape[0], h.shape[1]))
+            z.fill(np.nan)
+            
             z[0, :, :] = -hr
             for k in range(1, z.shape[0]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hr

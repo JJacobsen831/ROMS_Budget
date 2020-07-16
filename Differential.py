@@ -30,9 +30,57 @@ def dV(RomsFile) :
     DV = dx*dy*dz
     
     return DV
+    
 
-def dAz(RomsFile) :
-    """Compute differential area of each cell"""
+def dA_int_w(RomsFile) :
+    """ Compute differential area of each cell interpolating depth at w points to u, v points """
+    RomsNC = dt(RomsFile, 'r')
+      
+    #depth at w points
+    depth_w = dep._set_depth(RomsFile, None, 'w', RomsNC.variables['h'],RomsNC.variables['zeta'])
+    dz_w = np.diff(depth_w, n = 1, axis = 0)
+    
+    # lon at rho points 
+    lon_rho0 = RomsNC.variables['lon_rho'][:, 0:dz_w.shape[2]-1]
+    lon_rho1 = RomsNC.variables['lon_rho'][:, 1:dz_w.shape[2]]
+        
+    # lon at u point
+    lon_u = RomsNC.variables['lon_u'][:]
+    
+    #dz at rho points    
+    z_rho0 = dz_w[:, :, 0:dz_w.shape[2]-1] 
+    z_rho1 = dz_w[:, :, 1:dz_w.shape[2]]
+    
+    #interpolation to u points
+    dz_u = z_rho0 + (z_rho1 - z_rho0)/(lon_rho1 - lon_rho0)*(lon_u - lon_rho0)
+    
+    # depth at v points
+    # lats
+    lat_rho0 = RomsNC.variables['lat_rho'][0:dz_w.shape[1]-1, :]
+    lat_rho1 = RomsNC.variables['lat_rho'][1:dz_w.shape[1], :]
+    lat_v = RomsNC.variables['lat_v'][:]
+    
+    #depths at w points
+    z_Vrho0 = dz_w[:, 0:dz_w.shape[1]-1, :]
+    z_Vrho1 = dz_w[:, 1:dz_w.shape[1], :]
+    
+    #interpolate between rho points, u
+    dz_v = z_Vrho0 - (z_Vrho1 - z_Vrho0)/(lat_rho1 - lat_rho0)*(lat_v - lat_rho0)
+    
+    #sides of cells
+    dx = np.repeat(1/np.array(RomsNC.variables['pm'])[np.newaxis, :, :], dz_v.shape[0], axis = 0)
+    dx = dx[:, 0:dz_v.shape[1], 0:dz_v.shape[2]]
+    dy = np.repeat(1/np.array(RomsNC.variables['pn'])[np.newaxis, :, :], dz_u.shape[0], axis = 0)
+    dy = dy[:, 0:dz_u.shape[1], 0:dz_u.shape[2]]
+   
+    #compute area
+    A_xz = dx*dz_v
+    A_yz = dy*dz_u
+    
+    return A_xz, A_yz
+
+def dAz_psi(RomsFile) :
+    """Compute differential area of each cell using a trapazoid at psi points"""
     #load roms file
     RomsNC = dt(RomsFile, 'r')
     
@@ -41,29 +89,28 @@ def dAz(RomsFile) :
                 'zeta' : RomsNC.variables['zeta']}
     
     #compute depth at w points
-    depth_domain = dep._set_depth(RomsFile, None, 'w', romsvars['h'], romsvars['zeta'])
-        
+    depth_domain = dep._set_depth(RomsFile, None, 'psi', romsvars['h'], romsvars['zeta'])        
     dz = np.diff(depth_domain, n = 1, axis = 0)
-            
+    
     #compute lengths of horizontal cell directions repeat over depth axis
     dx = np.repeat(1/np.array(RomsNC.variables['pm'])[np.newaxis, :, :], dz.shape[0], axis = 0)
     dy = np.repeat(1/np.array(RomsNC.variables['pn'])[np.newaxis, :, :], dz.shape[0], axis = 0)
     
     #compute differential area assuming trapizoidal shape
-    Axz = np.empty(dx.shape)
-    Axz.fill(np.nan)
-    Ayz = Axz
+    A_xz = np.empty(dz.shape)
+    A_xz.fill(np.nan)
     
-    for k in range(1, dx.shape[2]):
-        Axz[:,:,k-1] = 0.5*(dz[:,:, k-1]+dz[:, :, k])*dx[:,:,k-1]
+    A_yz = np.empty(dz.shape)
+    A_yz.fill(np.nan)
     
-    for k in range(1, dy.shape[1]):
-        Ayz[:, k, :] = 0.5*(dz[:, k-1, :]+ dz[:, k, :])*dy[:, k-1,:]
+    Lm = dz.shape[1]
+    Mm = dz.shape[2]
     
     #x area and y area
+    for k in range(1, dz.shape[1]-1):
+        A_xz[:,k-1,:] = 0.5*(dz[:, k, 0:Mm] + dz[:, k-1, 0:Mm])*dx[:,k-1,0:Mm]
     
-        
-    return DA
-
-
-    
+    for k in range(1, dz.shape[2]-1):
+       A_yz[:, :, k-1] = 0.5*(dz[:, 0:Lm, k]+ dz[:, 0:Lm, k-1])*dy[:, 0:Lm, k-1]
+       
+    return A_xz, A_yz
