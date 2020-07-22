@@ -32,3 +32,25 @@ def ROMS_CV(Var, RomsFile, Mask):
     
     return Var
     
+def rho_dist(RomsFile) :
+    """
+    Use seawater package to compute distance between rho points
+    """
+    RomsNC = dt(RomsFile, 'r')
+    
+    lat = RomsNC.variables['lat_rho'][:]
+    lon = RomsNC.variables['lon_rho'][:]
+    
+    x_dist = np.empty((lon.shape[0], lon.shape[1]-1))
+    x_dist.fill(np.nan)
+    for i in range(lon.shape[0]) :
+        for j in range(lon.shape[1]-1) :
+            x_dist[i, j] = sw.dist([lat[i, j], lat[i, j+1]], [lon[i, j], lon[i, j +1]])[0]
+            
+    y_dist = np.empty((lat.shape[0]-1, lat.shape[1]))
+    y_dist.fill(np.nan)
+    for i in range(y_dist.shape[0]):
+        for j in range(y_dist.shape[1]) :
+            y_dist[i, j] = sw.dist([lat[i,j], lat[i+1, j]], [lon[i,j], lon[i+1, j]])
+            
+    return x_dist, y_dist
