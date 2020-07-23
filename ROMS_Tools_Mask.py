@@ -8,6 +8,7 @@ import numpy as np
 from netCDF4 import Dataset as dt
 import obs_depth_JJ as dep
 from Filters import godinfilt 
+import seawater as sw
 
 def RhoPsiIndex_Mask(RomsFile, latbounds, lonbounds):
     """Locates indices of lat and lon within ROMS Output File with logical mask"""
@@ -35,6 +36,7 @@ def ROMS_CV(Var, RomsFile, Mask):
 def rho_dist(RomsFile) :
     """
     Use seawater package to compute distance between rho points
+    Returns distance in meters
     """
     RomsNC = dt(RomsFile, 'r')
     
@@ -45,12 +47,12 @@ def rho_dist(RomsFile) :
     x_dist.fill(np.nan)
     for i in range(lon.shape[0]) :
         for j in range(lon.shape[1]-1) :
-            x_dist[i, j] = sw.dist([lat[i, j], lat[i, j+1]], [lon[i, j], lon[i, j +1]])[0]
+            x_dist[i, j] = sw.dist([lat[i, j], lat[i, j+1]], [lon[i, j], lon[i, j +1]])[0]*1000
             
     y_dist = np.empty((lat.shape[0]-1, lat.shape[1]))
     y_dist.fill(np.nan)
     for i in range(y_dist.shape[0]):
         for j in range(y_dist.shape[1]) :
-            y_dist[i, j] = sw.dist([lat[i,j], lat[i+1, j]], [lon[i,j], lon[i+1, j]])
+            y_dist[i, j] = sw.dist([lat[i,j], lat[i+1, j]], [lon[i,j], lon[i+1, j]])[0]*1000
             
     return x_dist, y_dist

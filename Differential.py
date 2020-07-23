@@ -8,6 +8,7 @@ Tools used to create differential volumes and areas of each cell in roms output
 import numpy as np
 from netCDF4 import Dataset as dt
 import obs_depth_JJ as dep
+from ROMS_Tools_Mask import rho_dist as dist
 
 def dV(RomsFile) :
     """ Load full roms grid and compute differential volume of each cell"""
@@ -114,3 +115,38 @@ def dAz_psi(RomsFile) :
        A_yz[:, :, k-1] = 0.5*(dz[:, 0:Lm, k]+ dz[:, 0:Lm, k-1])*dy[:, 0:Lm, k-1]
        
     return A_xz, A_yz
+
+def d_dist(RomsFile, var) :
+    """
+    Compute x-gradient and y-gradient with correction for ROMS grid 
+    """
+    #load roms file
+    RomsNC = dt(RomsFile, 'r')
+    
+    #compute depth at rho points
+    depth = dep._set_depth_T(RomsFile, None, 'rho', RomsNC.variables['h'],RomsNC.variables['zeta'])
+    
+    #distance between rho points in x and y directions
+    x_dist, y_dist = dist(RomsFile)
+    
+    #reshape through depth space
+    dx0 = np.repeat(np.array(x_dist)[np.newaxis, :, :], depth.shape[1], axis = 0)
+    dx = np.repeat(np.array(dx0)[np.newaxis, :, :, :], depth.shape[0], axis = 0)
+    
+    dy0 = np.repeat(np.array(y_dist)[np.newaxis, :, :], depth.shape[1], axis = 0)
+    dy = np.repeat(np.array(dy0)[np.newaxis, :, :, :], depth.shape[0], axis = 0)
+    
+    #difference in depths of neighboring points in the x (lon) direction
+    dz_x = np.diff(depth, n = 1, axis = 3)
+    dz_y = np.diff(depth, n = 1, axis = 2)
+    
+    #difference in variable values of neighboring points in the x direction
+    dprime_x = np.diff(var, n = 1, axis = 3)
+    dprime_y = np.diff(var, n = 1, axis = 2)
+    
+    d_X = (dz_x/dx)*(dprime_x/dz_x) 
+    d_Y = (dz_y/dy)*(dprime_y/dz_y)
+    
+    return d_X, d_Y
+    
+    

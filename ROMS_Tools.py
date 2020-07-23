@@ -9,7 +9,7 @@ import numpy as np
 from netCDF4 import Dataset as dt
 import obs_depth_JJ as dep
 from Filters import godinfilt 
-
+import seawater as sw
 
 def RhoPsiIndex(RomsFile, latbounds, lonbounds):
     """locates indices of lat and lon within ROMS Output File assuming regular spacing"""
@@ -134,6 +134,10 @@ def Reynolds_Avg_Godin(Var, Time):
     
     return ReynAvg
 
+def CV_VolAvg(Var) :
+    """Compute volume average of control volume """
+    raise NotImplementedError('Contol Volume average not developed yet')
+
 def ModelDepth(RomsFile, point_type, IndBounds):
     """Computes ROMS depth within control volume defined by lat and lon bounds
     uses obs_depth, converted from set_depth.m"""
@@ -152,3 +156,26 @@ def ModelDepth(RomsFile, point_type, IndBounds):
                                   IndBounds['Rho']['lon_li']:IndBounds['Rho']['lon_ui']])
     
     return depth
+
+def rho_dist(RomsFile) :
+    """
+    Use seawater package to compute distance between rho points
+    """
+    RomsNC = dt(RomsFile, 'r')
+    
+    lat = RomsNC.variables['lat_rho'][:]
+    lon = RomsNC.variables['lon_rho'][:]
+    
+    x_dist = np.empty((lon.shape[0], lon.shape[1]-1))
+    x_dist.fill(np.nan)
+    for i in range(lon.shape[0]) :
+        for j in range(lon.shape[1]-1) :
+            x_dist[i, j] = sw.dist([lat[i, j], lat[i, j+1]], [lon[i, j], lon[i, j +1]])[0]
+            
+    y_dist = np.empty((lat.shape[0]-1, lat.shape[1]))
+    y_dist.fill(np.nan)
+    for i in range(y_dist.shape[0]):
+        for j in range(y_dist.shape[1]) :
+            y_dist[i, j] = sw.dist([lat[i,j], lat[i+1, j]], [lon[i,j], lon[i+1, j]])
+            
+    return x_dist, y_dist
