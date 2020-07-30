@@ -201,7 +201,7 @@ def _set_depth_T(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             z = np.empty((zetar.shape[0],N+use_w, hr.shape[0], hr.shape[1]))
             z.fill(np.nan)
             
-            for k in range(z.shape[0]) : 
+            for k in range(z.shape[1]) : 
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hr
                 
                 for i in range(zetar.shape[0]) : 
@@ -218,7 +218,7 @@ def _set_depth_T(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             z.fill(np.nan)
             
             #compute depth
-            for k in range(z.shape[0]):
+            for k in range(z.shape[1]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hp
                 
                 for i in range(zetap.shape[0]) :
@@ -233,7 +233,7 @@ def _set_depth_T(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             z.fill(np.nan)
             
             #compute depth
-            for k in range(z.shape[0]):
+            for k in range(z.shape[1]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hu
                 
                 for i in range(zetau.shape[0]) :
@@ -248,7 +248,7 @@ def _set_depth_T(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             z.fill(np.nan)
             
             #compute depth
-            for k in range(z.shape[0]):
+            for k in range(z.shape[1]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hv
                 
                 for i in range(zetav.shape[0]) :
@@ -262,7 +262,7 @@ def _set_depth_T(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             z.fill(np.nan)
             
             z[0, :, :] = -hr
-            for k in range(1, z.shape[0]):
+            for k in range(1, z.shape[1]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hr
                 
                 for i in range(zetar.shape[0]) :
