@@ -33,7 +33,7 @@ def ROMS_CV(Var, RomsFile, Mask):
     
     return Var
     
-def rho_dist(RomsFile) :
+def rho_dist_sw(RomsFile) :
     """
     Use seawater package to compute distance between rho points
     Returns distance in meters
@@ -56,3 +56,26 @@ def rho_dist(RomsFile) :
             y_dist[i, j] = sw.dist([lat[i,j], lat[i+1, j]], [lon[i,j], lon[i+1, j]])[0]*1000
             
     return x_dist, y_dist
+
+def rho_dist_grd(RomsGrd) :
+    """ 
+    Compute distance between rho points using roms grid file
+    """
+    RomsNC = dt(RomsGrd, 'r')
+    
+    #distance from grid edge
+    Xx = RomsNC.variables['x_rho'][:]
+    Yy = RomsNC.variables['y_rho'][:]
+    
+    #difference between points (meters)
+    dx = np.diff(Xx, n = 1, axis = 1)
+    dy = np.diff(Yy, n = 1, axis = 0)
+    
+    return dx, dy
+    
+
+
+
+
+
+

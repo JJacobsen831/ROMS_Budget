@@ -10,7 +10,11 @@ import ROMS_Tools as RT
 
 
 #Locate file
-RomsFile = '/Users/Jasen/Documents/Data/ROMS_ICBC/wc12_hycom_20090101_dnref99_ini_Darwin_NuteMap.nc'
+RomsFile = '/Users/Jasen/Documents/Data/ROMS_TestRuns/wc12_his_5day.nc'
+RomsGrd = '/Users/Jasen/Documents/Data/ROMS_TestRuns/wc12_grd.nc.0'
+
+#select variable
+varname = 'salt'
 
 #coordinates of desired control volume
 latbounds = [35, 37]
