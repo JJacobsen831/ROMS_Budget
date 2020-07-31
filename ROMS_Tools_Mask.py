@@ -14,22 +14,32 @@ def RhoPsiIndex_Mask(RomsFile, latbounds, lonbounds):
     """Locates indices of lat and lon within ROMS Output File with logical mask"""
     #load roms file
     RomsNC = dt(RomsFile, 'r')
+    var = RomsNC.variables['salt'][:]
     
+    #define masks
     Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
     Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
-    RhoMask = np.invert(Rholats*Rholons)
+    RHOMASK = np.invert(Rholats*Rholons)
     
     Psilats = (RomsNC.variables['lat_psi'][:] >= latbounds[0])*(RomsNC.variables['lat_psi'][:] <= latbounds[1])
     Psilons = (RomsNC.variables['lon_psi'][:] >= lonbounds[0])*(RomsNC.variables['lon_psi'][:] <= lonbounds[1])
-    PsiMask = np.invert(Psilats*Psilons)
+    PSIMASK = np.invert(Psilats*Psilons)
+    
+    #repeat masks over depth and time dimensions
+    _RM = np.repeat(np.array(RHOMASK)[np.newaxis, :, :], var.shape[1], axis = 0)
+    RhoMask = np.repeat(np.array(_RM)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    
+    _PM = np.repeat(np.array(PSIMASK)[np.newaxis, :, :], var.shape[1], axis = 0)
+    PsiMask = np.repeat(np.array(_PM)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    
     
     return RhoMask, PsiMask
 
-def ROMS_CV(Var, RomsFile, Mask):
+def ROMS_CV(varname, RomsFile, Mask):
     #load
     RomsNC = dt(RomsFile, 'r')
     
-    Var = np.ma.MaskedArray(RomsNC.variables[Var], Mask)
+    Var = np.ma.MaskedArray(RomsNC.variables[varname], Mask)
     
     return Var
     

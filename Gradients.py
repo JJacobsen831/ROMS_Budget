@@ -14,11 +14,15 @@ def x_grad(RomsFile, RomsGrd, varname) :
     """
     Compute x-gradient assuming rectangular grid cells
     """
-    #load roms file
-    RomsNC = dt(RomsFile, 'r')
+    if type(varname) == str :
+        #load roms file
+        RomsNC = dt(RomsFile, 'r')
+        #load variable
+        var = RomsNC.variables[varname][:]
+        
+    else:
+        var = varname
     
-    #load variable
-    var = RomsNC.variables[varname][:]
     dvar = np.diff(var, n = 1, axis = 3)
     
     #lon positions [meters]
@@ -37,11 +41,16 @@ def y_grad(RomsFile, RomsGrd, varname):
     """
     Compute y-gradient assuming rectangular grid cells
     """
-    #load roms file
-    RomsNC = dt(RomsFile, 'r')
+    if type(varname) == str :
+        #load roms file
+        RomsNC = dt(RomsFile, 'r')
+        #load variable
+        var = RomsNC.variables[varname][:]
+        
+    else:
+        var = varname
     
-    #load variable
-    var = RomsNC.variables[varname][:]
+    #compute difference
     dvar = np.diff(var, n = 1, axis = 2)
     
     #lon positions [meters]
@@ -60,11 +69,15 @@ def z_grad(RomsFile, varname) :
     """
     Compute z-gradient assuming rectangular grid cells
     """
-    #load ROMS file
-    RomsNC = dt(RomsFile, 'r')
+    if type(varname) == str :
+        #load roms file
+        RomsNC = dt(RomsFile, 'r')
+        #load variable
+        var = RomsNC.variables[varname][:]
+        
+    else:
+        var = varname
     
-    #load variable
-    var = RomsNC.variables[varname][:]
     dvar = np.diff(var, n = 1, axis = 1)
     
     #depth [meters]
@@ -116,8 +129,16 @@ def x_grad_GridCor(RomsFile, RomsGrd, varname) :
     #depth difference in vertical
     dz_z = np.diff(_depth, n = 1, axis = 1)
     
-    #load variable and compute differentials
-    _var = RomsNC.variables[varname][:]
+    #depth difference of adjacent grid points
+    dz_x = np.diff(_depth, n = 1, axis = 3)
+    
+    #load variable 
+    if type(varname) == str :
+        _var = RomsNC.variables[varname][:]
+    else :
+        _var = varname
+    
+    # compute differential
     dvar_z = np.diff(_var, n = 1, axis = 1)
     
     #distance between rho points in x direction
@@ -135,11 +156,8 @@ def x_grad_GridCor(RomsFile, RomsGrd, varname) :
     #average to X points
     dvar_dz = Wpt_to_Upt(dvar_dz_tri, 'U')
     
-    #average dz on tri points to X points
-    dz = Wpt_to_Upt(dz_z, 'U')
-    
     #correction for roms grid
-    dv_dxCor = dvar_dz*(dz/dx)
+    dv_dxCor = dvar_dz*(dz_x/dx)
     
     return dv_dxCor
 
@@ -155,11 +173,19 @@ def y_grad_GridCor(RomsFile, RomsGrd, varname) :
     _depth = dep._set_depth_T(RomsFile, None, 'rho', \
                               RomsNC.variables['h'],RomsNC.variables['zeta'])
     
-    #depth difference between adjacent rho points
+    #depth difference in vertical
     dz_z = np.diff(_depth, n = 1, axis = 1)
     
-    #load variable and compute differential
-    _var = RomsNC.variables[varname][:]
+    #depth difference between adjacent rho points
+    dz_y = np.diff(_depth, n = 1, axis = 2)
+        
+    #load variable 
+    if type(varname) == str :
+        _var = RomsNC.variables[varname][:]
+    else :
+        _var = varname
+    
+    #compute difference
     dvar_z = np.diff(_var, n = 1, axis = 1)
     
     #distance between rho points in x and y directions
@@ -175,11 +201,8 @@ def y_grad_GridCor(RomsFile, RomsGrd, varname) :
     
     #average to X points
     dvar_dz = Wpt_to_Upt(dvar_dz_tri, 'V')
-    
-    #average dz on tri points to X points
-    dz = Wpt_to_Upt(dz_z, 'V')
-    
+        
     #correction for roms grid
-    dv_dyCor = dvar_dz*(dz/dy)
+    dv_dyCor = dvar_dz*(dz_y/dy)
     
     return dv_dyCor
