@@ -6,26 +6,30 @@ Created on Mon Jul  6 12:27:28 2020
 Tools used to create differential volumes and areas of each cell in roms output
 """
 import numpy as np
-from netCDF4 import Dataset as dt
+from netCDF4 import Dataset as nc4
 import obs_depth_JJ as dep
 from ROMS_Tools_Mask import rho_dist_grd as dist
 
 def dV(RomsFile) :
     """ Load full roms grid and compute differential volume of each cell"""
-    RomsNC = dt(RomsFile, 'r')
+    RomsNC = nc4(RomsFile, 'r')
 
     #compute z
-    romsvars = {'h' : RomsNC.variables['h'], \
-                'zeta' : RomsNC.variables['zeta']}
+    romsvars = {'h' : RomsNC.variables['h'][:], \
+                'zeta' : RomsNC.variables['zeta'][:]}
     
     #compute depth at w points
-    depth_domain = dep._set_depth(RomsFile, None, 'w', romsvars['h'], romsvars['zeta'])
+    depth_domain = dep._set_depth_T(RomsFile, None, 'w', romsvars['h'], romsvars['zeta'])
         
-    dz = np.diff(depth_domain, n = 1, axis = 0)
+    dz = np.diff(depth_domain, n = 1, axis = 1)
             
-    #compute lengths of horizontal cell directions
-    dx = np.repeat(1/np.array(RomsNC.variables['pm'])[np.newaxis, :, :], dz.shape[0], axis = 0)
-    dy = np.repeat(1/np.array(RomsNC.variables['pn'])[np.newaxis, :, :], dz.shape[0], axis = 0)
+    #compute lengths of horizontal cell directions & repeat over depth space
+    _dx = np.repeat(1/np.array(RomsNC.variables['pm'])[np.newaxis, :, :], dz.shape[1], axis = 0)
+    _dy = np.repeat(1/np.array(RomsNC.variables['pn'])[np.newaxis, :, :], dz.shape[1], axis = 0)
+    
+    #repeat over time space
+    dx = np.repeat(_dx[np.newaxis, :, :, :], dz.shape[0], axis = 0)
+    dy = np.repeat(_dy[np.newaxis, :, :, :], dz.shape[0], axis = 0)
     
     #compute differential volume of each cell
     DV = dx*dy*dz
@@ -35,11 +39,11 @@ def dV(RomsFile) :
 
 def dA_int_w(RomsFile) :
     """ Compute differential area of each cell interpolating depth at w points to u, v points """
-    RomsNC = dt(RomsFile, 'r')
+    RomsNC = nc4(RomsFile, 'r')
       
     #depth at w points
-    depth_w = dep._set_depth(RomsFile, None, 'w', RomsNC.variables['h'],RomsNC.variables['zeta'])
-    dz_w = np.diff(depth_w, n = 1, axis = 0)
+    depth_w = dep._set_depth_T(RomsFile, None, 'w', RomsNC.variables['h'][:],RomsNC.variables['zeta'][:])
+    dz_w = np.diff(depth_w, n = 1, axis = 1)
     
     # lon at rho points 
     lon_rho0 = RomsNC.variables['lon_rho'][:, 0:dz_w.shape[2]-1]
@@ -52,7 +56,8 @@ def dA_int_w(RomsFile) :
     z_rho0 = dz_w[:, :, 0:dz_w.shape[2]-1] 
     z_rho1 = dz_w[:, :, 1:dz_w.shape[2]]
     
-    #interpolation to u points
+    #interpolation to u points >>>>>>>>>>>> lon_ vars need to be repeated over depth and time <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Write subroutine to do this and replace all over  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     dz_u = z_rho0 + (z_rho1 - z_rho0)/(lon_rho1 - lon_rho0)*(lon_u - lon_rho0)
     
     # depth at v points
@@ -83,7 +88,7 @@ def dA_int_w(RomsFile) :
 def dAz_psi(RomsFile) :
     """Compute differential area of each cell using a trapazoid at psi points"""
     #load roms file
-    RomsNC = dt(RomsFile, 'r')
+    RomsNC = nc4(RomsFile, 'r')
     
     #compute z
     romsvars = {'h' : RomsNC.variables['h'], \

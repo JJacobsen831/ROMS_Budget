@@ -258,10 +258,10 @@ def _set_depth_T(romsfile=None, romsvars=None, point_type=None, h=None, zeta=0):
             hr = h
             zetar = zeta
             
-            z = np.empty((zetar.shape[0], N+use_w, h.shape[0], h.shape[1]))
+            z = np.empty((zetar.shape[0], N+use_w, hr.shape[0], hr.shape[1]))
             z.fill(np.nan)
             
-            z[0, :, :] = -hr
+            z[:, 0, :, :] = -hr
             for k in range(1, z.shape[1]):
                 z0 = (s[k]-C[k])*romsvars['hc'] + C[k]*hr
                 

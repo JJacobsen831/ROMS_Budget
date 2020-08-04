@@ -19,8 +19,8 @@ RomsGrd = '/Users/Jasen/Documents/Data/ROMS_TestRuns/wc12_grd.nc.0'
 varname = 'salt'
 
 #load bathymetry
-romnc = nc4(RomsFile, 'r')
-bathy = romnc.variables['h'][:]
+RomsNC = nc4(RomsFile, 'r')
+bathy = RomsNC.variables['h'][:]
 
 #horizontal gradients
 ds_dx = gr.x_grad(RomsFile, RomsGrd, varname)
@@ -36,9 +36,16 @@ y_rat = np.array(np.abs(yCor)/np.abs(ds_dy))
 
 #median ratio
 DM_ratx = np.median(x_rat[0,:,:,:], axis = 0)
-DM_raty = np.median(y_rat[0,:,:,:], axis = 0)
 
-#
+#log median ration, skipping zeros
+for n in range(DM_ratx.shape[0]) :
+    ind = DM_ratx[n,:] != 0
+    DM_ratx[n,ind] = np.log10(DM_ratx[n,ind])
+
+DM_raty = np.median(y_rat[0,:,:,:], axis = 0)
+for n in range(DM_raty.shape[0]) :
+    ind = DM_raty[n,:] != 0
+    DM_raty[n,ind] = np.log10(DM_raty[n, ind])
 
 #plotting
 fig1, (ax1, ax2) = plt.subplots(nrows = 1, ncols = 2, constrained_layout=True)
@@ -51,6 +58,7 @@ CS = ax2.contourf(DM_raty, cmap = plt.cm.inferno)
 CS1 = ax2.contour(bathy, cmap = plt.cm.gray) 
 ax2.set_title('GridCor:ds_dy')
 fig1.colorbar(CS)
+fig1.suptitle('Magnitude of Depth Median of Grid Corrention')
 
-fig1.suptitle('Depth Median of Grid Corrention')
+plt.figure(figsize=(20,10))
 fig1.savefig('GridCor_Map.jpg')

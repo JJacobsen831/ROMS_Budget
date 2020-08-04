@@ -6,8 +6,6 @@ Created on Thu Jul  9 15:31:03 2020
 """
 import numpy as np
 from netCDF4 import Dataset as dt
-import obs_depth_JJ as dep
-from Filters import godinfilt 
 import seawater as sw
 
 def RhoPsiIndex_Mask(RomsFile, latbounds, lonbounds):
@@ -35,11 +33,50 @@ def RhoPsiIndex_Mask(RomsFile, latbounds, lonbounds):
     
     return RhoMask, PsiMask
 
+def FaceMask(RomsFile, latbounds, lonbounds) :
+    """
+    Define masks along each face of control volume
+    """
+    RomsNC = dt(RomsFile, 'r')
+    var = RomsNC.variables['salt']
+    
+    #north face
+    Rholats = (RomsNC.variables['lat_rho'][:] == latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
+    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
+    _NF = np.invert(Rholats*Rholons)
+    _NFdep = np.repeat(np.array(_NF)[np.newaxis, :, :], var.shape[1], axis = 0)
+    NorthFace = np.repeat(np.array(_NFdep)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    
+    #south face
+    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] == latbounds[1])
+    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
+    _SF = np.invert(Rholats*Rholons)
+    _SFdep = np.repeat(np.array(_SF)[np.newaxis, :, :], var.shape[1], axis = 0)
+    SouthFace = np.repeat(np.array(_SFdep)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    
+    #east face
+    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
+    Rholons = (RomsNC.variables['lon_rho'][:] == lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
+    _EF = np.invert(Rholats*Rholons)
+    _EFdep = np.repeat(np.array(_EF)[np.newaxis, :, :], var.shape[1], axis = 0)
+    EastFace = np.repeat(np.array(_EFdep)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    
+    #west face
+    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
+    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] == lonbounds[1])
+    _WF = np.invert(Rholats*Rholons)
+    _WFdep = np.repeat(np.array(_WF)[np.newaxis, :, :], var.shape[1], axis = 0)
+    WestFace = np.repeat(np.array(_WFdep)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    
+    return NorthFace, WestFace, SouthFace, EastFace
+
+
+
 def ROMS_CV(varname, RomsFile, Mask):
     #load
     RomsNC = dt(RomsFile, 'r')
     
-    Var = np.ma.MaskedArray(RomsNC.variables[varname], Mask)
+    Var = np.ma.array(RomsNC.variables[varname][:], mask = Mask)
     
     return Var
     
