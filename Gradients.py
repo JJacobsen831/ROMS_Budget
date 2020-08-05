@@ -6,7 +6,7 @@ Created on Tue Jul 28 14:27:51 2020
 Tools to compute gradients within a control volume defined in roms output
 """
 import numpy as np
-from netCDF4 import Dataset as dt
+from netCDF4 import Dataset as nc4
 import obs_depth_JJ as dep
 from ROMS_Tools_Mask import rho_dist_grd as dist
 
@@ -16,7 +16,7 @@ def x_grad(RomsFile, RomsGrd, varname) :
     """
     if type(varname) == str :
         #load roms file
-        RomsNC = dt(RomsFile, 'r')
+        RomsNC = nc4(RomsFile, 'r')
         #load variable
         var = RomsNC.variables[varname][:]
         
@@ -43,7 +43,7 @@ def y_grad(RomsFile, RomsGrd, varname):
     """
     if type(varname) == str :
         #load roms file
-        RomsNC = dt(RomsFile, 'r')
+        RomsNC = nc4(RomsFile, 'r')
         #load variable
         var = RomsNC.variables[varname][:]
         
@@ -71,7 +71,7 @@ def z_grad(RomsFile, varname) :
     """
     if type(varname) == str :
         #load roms file
-        RomsNC = dt(RomsFile, 'r')
+        RomsNC = nc4(RomsFile, 'r')
         #load variable
         var = RomsNC.variables[varname][:]
         
@@ -120,7 +120,7 @@ def x_grad_GridCor(RomsFile, RomsGrd, varname) :
     
     """
     #load roms file
-    RomsNC = dt(RomsFile, 'r')
+    RomsNC = nc4(RomsFile, 'r')
     
     #compute depth at rho points
     _depth = dep._set_depth_T(RomsFile, None, 'rho', \
@@ -167,7 +167,7 @@ def y_grad_GridCor(RomsFile, RomsGrd, varname) :
     
     """
     #load roms file
-    RomsNC = dt(RomsFile, 'r')
+    RomsNC = nc4(RomsFile, 'r')
     
     #compute depth at rho points
     _depth = dep._set_depth_T(RomsFile, None, 'rho', \

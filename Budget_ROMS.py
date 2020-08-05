@@ -48,22 +48,60 @@ dVar_dt = bud.TermOne(RomsFile, RhoMask, S_var)
 NorthFace, WestFace, SouthFace, EastFace = rt.FaceMask(RomsFile,\
                                                        latbounds, lonbounds)
 
+#>>>>>>>>>masks on u, v points may not have valid entrys<<<<<<<<<<<<<<<<<<<<<<<
+
 #subset variance
-_NorthPrime = ma.array(_prime, mask = NorthFace)
-NorthVar = _NorthPrime**2
+_NorthPrime = ma.array(_prime, mask = NorthFace['rho'])
+_NorthVar = _NorthPrime**2
+# shift rho to v points
+NorthVar = 0.5*(_NorthVar[:,:, 0:_NorthVar.shape[2]-1, :] + \
+                _NorthVar[:,:, 1:_NorthVar.shape[2], :])
 
-_WestPrime = ma.array(_prime, mask = WestFace)
-WestVar = _WestPrime**2
+#west
+_WestPrime = ma.array(_prime, mask = WestFace['rho'])
+_WestVar = _WestPrime**2
+#shift rho to u points
+WestVar = 0.5*(_WestVar[:,:, :, 0:_WestVar.shape[3]-1] + \
+                _WestVar[:,:, :, 1:_WestVar.shape[3]])
 
-_SouthPrime = ma.array(_prime, mask = SouthFace)
-SouthVar = _SouthPrime**2
+#south
+_SouthPrime = ma.array(_prime, mask = SouthFace['rho'])
+_SouthVar = _SouthPrime**2
+SouthVar = 0.5*(_SouthVar[:,:, 0:_SouthVar.shape[2]-1, :] + \
+                _SouthVar[:,:, 1:_SouthVar.shape[2], :])
 
-_EastPrime = ma.array(_prime, mask = EastFace)
-EastVar = _EastPrime**2
+#east
+_EastPrime = ma.array(_prime, mask = EastFace['rho'])
+_EastVar = _EastPrime**2
+EastVar = 0.5*(_EastVar[:,:, :, 0:_EastVar.shape[3]-1] + \
+                _EastVar[:,:, :, 1:_EastVar.shape[3]])
 
-#subset differential areas
-A_xz, A_yz = df.dA_int_w(RomsFile) #area code need to be repeated over depth and time
 
+#compute differential areas
+Ax_norm, Ay_norm = df.dA(RomsFile, RomsGrd)
 
+#subset areas
+North_Ay = ma.array(Ay_norm, mask = NorthFace['v'])
+West_Ax = ma.array(Ax_norm, mask = WestFace['u'])
+South_Ay = ma.array(Ay_norm, mask = SouthFace['v'])
+East_Ax = ma.array(Ax_norm, mask = EastFace['u'])
 
+#velocities
+North_V = ma.array(RomsNC.variables['v'][:], mask =  NorthFace['v'])
+West_U = ma.array(RomsNC.variables['u'][:], mask = WestFace['u'])
+South_V = ma.array(RomsNC.variables['v'][:], mask = SouthFace['v'])
+East_U = ma.array(RomsNC.variables['u'][:], mask = EastFace['u'])
+
+#multiply to get integrad
+North = North_V*North_Ay*NorthVar
+West = West_U*West_Ax*WestVar
+South = South_V*South_Ay*SouthVar
+East = East_U*East_Ax*EastVar
+
+#sum/integrate each time step
+Flux = np.empty(North.shape[0])
+Flux.fill(np.nan)
+for n in range(North.shape[0]) :
+    Flux[n] = np.ma.sum(np.ma.sum(np.ma.sum(North[n,:,:,:], axis =0), axis = 0).shape, axis = 0) + np.sum(West[n,:,:,:]) + \
+    np.sum(South[n,:,:,:]) + np.sum(East[n, :, :, :])
 
