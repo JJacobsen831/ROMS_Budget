@@ -8,7 +8,7 @@ Tools to compute gradients within a control volume defined in roms output
 import numpy as np
 from netCDF4 import Dataset as nc4
 import obs_depth_JJ as dep
-from ROMS_Tools_Mask import rho_dist_grd as dist
+import ROMS_Tools_Mask as rt
 
 def x_grad(RomsFile, RomsGrd, varname) :
     """
@@ -23,14 +23,20 @@ def x_grad(RomsFile, RomsGrd, varname) :
     else:
         var = varname
     
-    dvar = np.diff(var, n = 1, axis = 3)
+    #gradient in x direction on u points
+    dvar_u = np.diff(var, n = 1, axis = 3)
+    
+    #pad ends
+    dvar_pad = np.concatenate((dvar_u[:,:,:,0:1], dvar_u, dvar_u[:,:,:,-2:-1 ]), axis = 3)
+    
+    #average to rho points
+    dvar = 0.5*(dvar_pad[:,:,:,0:dvar_pad.shape[3]-1] + dvar_pad[:,:,:,1:dvar_pad.shape[3]])
     
     #lon positions [meters]
-    x_dist = dist(RomsGrd)[0]
+    x_dist = rt.rho_dist_grd(RomsGrd)[0]
     
     #repeat over depth and time space
-    _DX = np.repeat(np.array(x_dist)[np.newaxis, :, :], var.shape[1], axis = 0)
-    dx = np.repeat(np.array(_DX)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    dx = rt.AddDepthTime(RomsFile, x_dist)
     
     #compute gradient
     dvar_dx = dvar/dx
@@ -51,14 +57,19 @@ def y_grad(RomsFile, RomsGrd, varname):
         var = varname
     
     #compute difference
-    dvar = np.diff(var, n = 1, axis = 2)
+    dvar_v = np.diff(var, n = 1, axis = 2)
+    
+    #pad ends
+    dvar_pad = np.concatenate((dvar_v[:,:,0:1, :], dvar_v, dvar_v[:,:,-2:-1, :]), axis = 2)
+    
+    #average to rho points
+    dvar = 0.5*(dvar_pad[:,:,0:dvar_pad.shape[2]-1, :] + dvar_pad[:,:,1:dvar_pad.shape[3], :])    
     
     #lon positions [meters]
-    y_dist = dist(RomsGrd)[1]
+    y_dist = rt.rho_dist_grd(RomsGrd)[1]
     
     #repeat over depth and time space
-    _DY = np.repeat(np.array(y_dist)[np.newaxis, :, :], var.shape[1], axis = 0)
-    dy = np.repeat(np.array(_DY)[np.newaxis, :, :, :], var.shape[0], axis = 0)
+    dy = rt.AddDepthTime(RomsFile, y_dist)
     
     #compute gradient
     dvar_dy = dvar/dy
@@ -78,10 +89,17 @@ def z_grad(RomsFile, varname) :
     else:
         var = varname
     
-    dvar = np.diff(var, n = 1, axis = 1)
+    #vertical difference
+    dvar_w = np.diff(var, n = 1, axis = 1)
+    
+    #pad ends
+    dvar_pad = np.concatenate((dvar_w[:,0:1, :, :], dvar_w, dvar_w[:,-2:-1, :, :]), axis = 1)
+    
+    #average to rho points
+    dvar = 0.5*(dvar_pad[:,0:dvar_pad.shape[1]-1,:, :] + dvar_pad[:,1:dvar_pad.shape[1], :, :])    
     
     #depth [meters]
-    depth = dep._set_depth_T(RomsFile, None, 'rho', \
+    depth = dep._set_depth_T(RomsFile, None, 'w', \
                              RomsNC.variables['h'], RomsNC.variables['zeta'])
     d_dep = np.diff(depth, n = 1, axis = 1)
     

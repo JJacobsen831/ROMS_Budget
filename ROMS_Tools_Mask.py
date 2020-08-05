@@ -26,12 +26,12 @@ def RhoUV_Mask(RomsFile, latbounds, lonbounds) :
     #define u mask
     Ulats = (RomsNC.variables['lat_u'][:] >= latbounds[0])*(RomsNC.variables['lat_u'][:] <= latbounds[1])
     Ulons = (RomsNC.variables['lon_u'][:] >= lonbounds[0]-c_offset_u)*(RomsNC.variables['lon_u'][:] <= lonbounds[1]-c_offset_u)
-    U_Mask = np.ma.asarray(AddDepthTime(np.invert(Ulats*Ulons)))
+    U_Mask = np.ma.asarray(AddDepthTime(RomsFile, np.invert(Ulats*Ulons)))
     
     #define v mask
-    Vlats = (RomsNC.variables['lat_v'][:] >= latbounds[0]+c_offset_v)(RomsNC.variables['lat_v'][:] <= latbounds[1]+c_offset_v)
+    Vlats = (RomsNC.variables['lat_v'][:] >= latbounds[0]+c_offset_v)*(RomsNC.variables['lat_v'][:] <= latbounds[1]+c_offset_v)
     Vlons = Rholons = (RomsNC.variables['lon_v'][:] >= lonbounds[0])*(RomsNC.variables['lon_v'][:] <= lonbounds[1])
-    V_Mask = np.ma.asarray(AddDepthTime(np.invert(Vlats*Vlons)))
+    V_Mask = np.ma.asarray(AddDepthTime(RomsFile, np.invert(Vlats*Vlons)))
     
     return Rho_Mask, U_Mask, V_Mask
 
@@ -46,55 +46,30 @@ def FaceMask(RomsFile, latbounds, lonbounds) :
     c_offset_lat = np.round(RomsNC.variables['lat_v'][0, 0] - RomsNC.variables['lat_rho'][0,0], decimals = 2)
     c_offset_lon = np.round(RomsNC.variables['lon_u'][0,0] - RomsNC.variables['lon_rho'][0,0], decimals = 2)
     
-    #north face rho
-    Rholats = (RomsNC.variables['lat_rho'][:] == latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
-    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
-    _NF = np.invert(Rholats*Rholons)
-    
     #north face v points with c-grid offset
-    
-    Rholats = (RomsNC.variables['lat_v'][:] == latbounds[0] + c_offset_lat)*(RomsNC.variables['lat_v'][:] <= latbounds[1] + c_offset_lat)
-    Rholons = (RomsNC.variables['lon_v'][:] >= lonbounds[0])*(RomsNC.variables['lon_v'][:] <= lonbounds[1])
-    _NFv = np.invert(Rholats*Rholons)
-    NorthFace = {'rho' : np.ma.asarray(AddDepthTime(RomsFile, _NF)), \
-                 'v' : np.ma.asarray(AddDepthTime(RomsFile, _NFv))}
-    
-    #south face
-    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] == latbounds[1])
-    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
-    _SF = np.invert(Rholats*Rholons)
+    Vlats = (RomsNC.variables['lat_v'][:] == latbounds[0] + c_offset_lat)*(RomsNC.variables['lat_v'][:] <= latbounds[1] + c_offset_lat)
+    Vlons = (RomsNC.variables['lon_v'][:] >= lonbounds[0])*(RomsNC.variables['lon_v'][:] <= lonbounds[1])
+    _NFv = np.invert(Vlats*Vlons)
+    NorthFace = np.ma.asarray(AddDepthTime(RomsFile, _NFv))
     
     #south face v points
-    Rholats = (RomsNC.variables['lat_v'][:] >= latbounds[0]+c_offset_lat)*(RomsNC.variables['lat_v'][:] == latbounds[1]+c_offset_lat)
-    Rholons = (RomsNC.variables['lon_v'][:] >= lonbounds[0])*(RomsNC.variables['lon_v'][:] <= lonbounds[1])
-    _SFv = np.invert(Rholats*Rholons)
-    SouthFace = {'rho' : np.ma.asarray(AddDepthTime(RomsFile, _SF)), \
-                 'v' : np.ma.asarray(AddDepthTime(RomsFile, _SFv))}
+    Vlats = (RomsNC.variables['lat_v'][:] >= latbounds[0]+c_offset_lat)*(RomsNC.variables['lat_v'][:] == latbounds[1]+c_offset_lat)
+    Vlons = (RomsNC.variables['lon_v'][:] >= lonbounds[0])*(RomsNC.variables['lon_v'][:] <= lonbounds[1])
+    _SFv = np.invert(Vlats*Vlons)
+    SouthFace = np.ma.asarray(AddDepthTime(RomsFile, _SFv))
     
-    #east face
-    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
-    Rholons = (RomsNC.variables['lon_rho'][:] == lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
-    _EF = np.invert(Rholats*Rholons)
     
-    #east face u points
-    
-    Rholats = (RomsNC.variables['lat_u'][:] >= latbounds[0])*(RomsNC.variables['lat_u'][:] <= latbounds[1])
-    Rholons = (RomsNC.variables['lon_u'][:] == lonbounds[0]-c_offset_lon)*(RomsNC.variables['lon_u'][:] <= lonbounds[1]-c_offset_lon)
-    _EFu = np.invert(Rholats*Rholons)
-    EastFace = {'rho' : np.ma.asarray(AddDepthTime(RomsFile, _EF)), \
-                'u' : np.ma.asarray(AddDepthTime(RomsFile, _EFu))}
+    #West face u points
+    Ulats = (RomsNC.variables['lat_u'][:] >= latbounds[0])*(RomsNC.variables['lat_u'][:] <= latbounds[1])
+    Ulons = (RomsNC.variables['lon_u'][:] == lonbounds[0]-c_offset_lon)*(RomsNC.variables['lon_u'][:] <= lonbounds[1]-c_offset_lon)
+    _WFu = np.invert(Ulats*Ulons)
+    WestFace = np.ma.asarray(AddDepthTime(RomsFile, _WFu))
         
-    #west face
-    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
-    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] == lonbounds[1])
-    _WF = np.invert(Rholats*Rholons)
-    
-    #west face u points
-    Rholats = (RomsNC.variables['lat_u'][:] >= latbounds[0])*(RomsNC.variables['lat_u'][:] <= latbounds[1])
-    Rholons = (RomsNC.variables['lon_u'][:] >= lonbounds[0]-c_offset_lon)*(RomsNC.variables['lon_u'][:] == lonbounds[1]-c_offset_lon)
-    _WFu = np.invert(Rholats*Rholons)
-    WestFace = {'rho' : np.ma.asarray(AddDepthTime(RomsFile, _WF)), \
-                'u' : np.ma.asarray(AddDepthTime(RomsFile, _WFu))}
+    #East face u points
+    Ulats = (RomsNC.variables['lat_u'][:] >= latbounds[0])*(RomsNC.variables['lat_u'][:] <= latbounds[1])
+    Ulons = (RomsNC.variables['lon_u'][:] >= lonbounds[0]-c_offset_lon)*(RomsNC.variables['lon_u'][:] == lonbounds[1]-c_offset_lon)
+    _EFu = np.invert(Ulats*Ulons)
+    EastFace = np.ma.asarray(AddDepthTime(RomsFile, _EFu))
     
     return NorthFace, WestFace, SouthFace, EastFace
 
@@ -162,26 +137,3 @@ def cell_width(RomsGrd) :
     
     return dx_cell, dy_cell
   
-def RhoPsiIndex_Mask(RomsFile, latbounds, lonbounds):
-    """Locates indices of lat and lon within ROMS Output File with logical mask"""
-    #load roms file
-    RomsNC = nc4(RomsFile, 'r')
-    var = RomsNC.variables['salt'][:]
-    
-    Rholats = (RomsNC.variables['lat_rho'][:] >= latbounds[0])*(RomsNC.variables['lat_rho'][:] <= latbounds[1])
-    Rholons = (RomsNC.variables['lon_rho'][:] >= lonbounds[0])*(RomsNC.variables['lon_rho'][:] <= lonbounds[1])
-    RHOMASK = np.invert(Rholats*Rholons)
-    
-    Psilats = (RomsNC.variables['lat_psi'][:] >= latbounds[0])*(RomsNC.variables['lat_psi'][:] <= latbounds[1])
-    Psilons = (RomsNC.variables['lon_psi'][:] >= lonbounds[0])*(RomsNC.variables['lon_psi'][:] <= lonbounds[1])
-    PSIMASK = np.invert(Psilats*Psilons)
-    
-    #repeat masks over depth and time dimensions
-    _RM = np.repeat(np.array(RHOMASK)[np.newaxis, :, :], var.shape[1], axis = 0)
-    RhoMask = np.repeat(np.array(_RM)[np.newaxis, :, :, :], var.shape[0], axis = 0)
-    
-    _PM = np.repeat(np.array(PSIMASK)[np.newaxis, :, :], var.shape[1], axis = 0)
-    PsiMask = np.repeat(np.array(_PM)[np.newaxis, :, :, :], var.shape[0], axis = 0)
-    
-    
-    return RhoMask, PsiMask
