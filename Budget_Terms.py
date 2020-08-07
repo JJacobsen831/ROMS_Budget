@@ -11,7 +11,7 @@ import numpy.ma as ma
 from netCDF4 import Dataset as nc4
 import Differential as df
 import ROMS_Tools_Mask as rt
-
+import Gradients as gr
 
 def Prime(var_4dim) :
     """
@@ -113,3 +113,43 @@ def TermTwo(RomsFile, RomsGrd, varname, latbounds, lonbounds) :
                   ma.sum(East[n,:,:,:]) + ma.sum(West[n,:,:,:])
 
     return Flux
+
+def TermFour(RomsFile, RomsGrd, variance) :
+    """
+    Internal mixing
+    """
+    RomsNC = nc4(RomsFile, 'r')
+    
+    #vertical viscosity coefficient K
+    _Kv_w = RomsNC.variables['AKv'][:]
+    
+    #average to rho points
+    Kv_rho = 0.5*(_Kv_w[:,0:_Kv_w.shape[1]-1, :, :] + _Kv_w[:, 1:_Kv_w.shape[1], :, :])
+    
+    #apply mask
+    Kv = ma.array(Kv_rho, mask = ma.getmask(variance))
+    #horizontal viscosity coefficient
+    #??
+    
+    #gradients squared
+    #xgrad = ma.array(gr.x_grad(RomsFile, RomsGrd, variance)**2, \
+    #                 mask = ma.getmask(variance))
+    #ygrad = ma.array(gr.y_grad(RomsFile, RomsGrd, variance)**2, \
+    #                 mask = ma.getmask(variance))
+    zgrad = ma.array(gr.z_grad(RomsFile, variance)**2, \
+                     mask = ma.getmask(variance))
+    
+    #
+    #differentail volume
+    dV = ma.array(df.dV(RomsFile), mask = ma.getmask(variance))
+    
+    #integrad
+    z_m = 2*Kv*zgrad*dV
+    
+    #integrate
+    mixing = np.empty(z_m.shape[0])
+    mixing.fill(np.nan)
+    for n in range(mixing.shape[0]) :
+        mixing[n] = np.sum(z_m[n,:,:,:])
+    
+    return mixing

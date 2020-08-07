@@ -4,6 +4,9 @@ Created on Wed Aug  5 11:02:37 2020
 
 @author: Jasen
 """
+import os
+os.chdir('/Users/Jasen/Documents/GitHub/ROMS_Budget/')
+
 import numpy as np
 import numpy.ma as ma
 import ROMS_Tools_Mask as rt
@@ -34,26 +37,97 @@ _prime = bud.Prime(salt)
 variance = ma.array(_prime, mask = RhoMask)
 
 ## term 4 mixing
-def TermFour(RomsFile, RomsGrd variance) :
+def TermFour(RomsFile, RomsGrd, variance) :
     """
     Internal mixing
     """
     RomsNC = nc4(RomsFile, 'r')
     
     #vertical viscosity coefficient K
-    K_v = RomsNC.variables['AKv'][:]
-    #average to rho points
-    Kv = 0.5*(K_v[:,0:K_v.shape[1]-1, :, :] + K_v[:, 1:K_v.shape[1], :, :])
+    _Kv_w = RomsNC.variables['AKv'][:]
     
+    #average to rho points
+    Kv_rho = 0.5*(_Kv_w[:,0:_Kv_w.shape[1]-1, :, :] + _Kv_w[:, 1:_Kv_w.shape[1], :, :])
+    
+    #apply mask
+    Kv = ma.array(Kv_rho, mask = ma.getmask(variance))
     #horizontal viscosity coefficient
     #??
     
-    #gradients
-    xgrad = gr.x_grad(RomsFile, RomsGrd, variance)
-    ygrad = gr.y_grad(RomsFile, RomsGrd, variance)
-    zgrad = gr.z_grad(RomsFile, RomsGrd, variance)
+    #gradients squared
+    #xgrad = ma.array(gr.x_grad(RomsFile, RomsGrd, variance)**2, \
+    #                 mask = ma.getmask(variance))
+    #ygrad = ma.array(gr.y_grad(RomsFile, RomsGrd, variance)**2, \
+    #                 mask = ma.getmask(variance))
+    zgrad = ma.array(gr.z_grad(RomsFile, variance)**2, \
+                     mask = ma.getmask(variance))
+    
+    #
+    #differentail volume
+    dV = ma.array(df.dV(RomsFile), mask = ma.getmask(variance))
+    
+    #integrad
+    z_m = 2*Kv*zgrad*dV
+    
+    #integrate
+    mixing = np.empty(z_m.shape[0])
+    mixing.fill(np.nan)
+    for n in range(mixing.shape[0]) :
+        mixing[n] = np.sum(z_m[n,:,:,:])
+    
+    return mixing
 
-
+#term 3 diffusion
+def TermThree(RomsFile, RomsGrd, varname, latbounds, lonbounds) :
+    """
+    Diffusion of variance across open boundaries
+    """
+    RomsNC = nc4(RomsFile, 'r')
+    var = RomsNC.variables[varname][:]
+    
+    #shift variable from rho points to u and v points
+    _var_u = 0.5*(var[:,:, :, 0:var.shape[3]-1] + var[:,:, :, 1:var.shape[3]])
+    _var_v = 0.5*(var[:,:, 0:var.shape[2]-1, :] + var[:,:, 1:var.shape[2], :])
+    
+    #define masks for u and v points
+    _, U_Mask, V_Mask = rt.RhoUV_Mask(RomsFile, latbounds, lonbounds)
+    
+    #compute variance 
+    var_u = ma.array(_var_u, mask = U_Mask)
+    var_v = ma.array(_var_v, mask = V_Mask)
+    
+    #variance squared
+    prime2_u = (var_u - ma.mean(var_u))**2
+    prime2_v = (var_v - ma.mean(var_v))**2
+    
+    #define face masks
+    NorthFace, WestFace, SouthFace, EastFace = rt.FaceMask(RomsFile,\
+                                                       latbounds, lonbounds)
+    
+    #apply face masks to variance squared
+    North_var = ma.array(prime2_v, mask = NorthFace)
+    South_var = ma.array(prime2_v, mask = SouthFace)
+    West_var = ma.array(prime2_u, mask = WestFace)
+    East_var = ma.array(prime2_u, mask = EastFace)
+    
+    #compute differential areas
+    Ax_norm, Ay_norm = df.dA(RomsFile, RomsGrd)
+    
+    #subset areas
+    North_Ay = ma.array(Ay_norm, mask = NorthFace)
+    West_Ax = ma.array(Ax_norm, mask = WestFace)
+    South_Ay = ma.array(Ay_norm, mask = SouthFace)
+    East_Ax = ma.array(Ax_norm, mask = EastFace)
+    
+    #load diffusion coef
+    _Kv_w = RomsNC.variables['AKv'][:]
+    
+    #shift to rho points
+    _Kv_rho = 0.5*(_Kv_w[:,0:_Kv_w.shape[1]-1, :, :] + _Kv_w[:, 1:_Kv_w.shape[1], :, :])
+    
+    #shift pad and shift to u points
+    Kv_upad = np.concatenate
+    
 
 
 def Term2(RomsFile, RomsGrd, varname, latbounds, lonbounds) :

@@ -80,9 +80,10 @@ def z_grad(RomsFile, varname) :
     """
     Compute z-gradient assuming rectangular grid cells
     """
+    #load roms file
+    RomsNC = nc4(RomsFile, 'r')
+    
     if type(varname) == str :
-        #load roms file
-        RomsNC = nc4(RomsFile, 'r')
         #load variable
         var = RomsNC.variables[varname][:]
         

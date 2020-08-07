@@ -28,7 +28,7 @@ latbounds = [35, 37]
 lonbounds = [-126, -125]
 
 # define mask
-RhoMask, _ = rt.RhoUV_Mask(RomsFile, latbounds, lonbounds)
+RhoMask, _, _ = rt.RhoUV_Mask(RomsFile, latbounds, lonbounds)
 
 #load and subset variable
 salt = rt.ROMS_CV(varname, RomsFile, RhoMask) 
@@ -37,13 +37,14 @@ salt = rt.ROMS_CV(varname, RomsFile, RhoMask)
 _prime = bud.Prime(salt)
 S_prime = ma.array(_prime, mask = RhoMask)
 
-#variance
-S_var = S_prime*S_prime   
+#variance squared
+S_var2 = S_prime*S_prime   
        
 #Term 1: change in variance within control volume
-dVar_dt = bud.TermOne(RomsFile, RhoMask, S_var)
+dVar_dt = bud.TermOne(RomsFile, RhoMask, S_var2)
 
 #Term 2: Flux of variance across boundary
 Flux = bud.TermTwo(RomsFile, RomsGrd, varname, latbounds, lonbounds)
 
 #Term 4: Internal mixing - destruction of variance
+Mixing = bud.TermFour(RomsFile, RomsGrd, S_prime)
