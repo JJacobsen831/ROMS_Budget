@@ -6,11 +6,54 @@ Created on Tue Jul 28 14:27:51 2020
 Tools to compute gradients within a control volume defined in roms output
 """
 import numpy as np
+import numpy.ma as ma
 from netCDF4 import Dataset as nc4
 import obs_depth_JJ as dep
 import ROMS_Tools_Mask as rt
+import GridShift
 
-def x_grad(RomsFile, RomsGrd, varname) :
+def x_grad_u(RomsFile, RomsGrd, varname) :
+    """
+    compute x-gradient on u points
+    """
+    if type(varname) == str :
+        #load roms file
+        RomsNC = nc4(RomsFile, 'r')
+        #load variable
+        var = RomsNC.variables[varname][:]
+        
+    else:
+        var = varname #[u points]
+    
+    #gradient in x direction [rho points]
+    dvar_rho = ma.diff(var, n = 1, axis = 3)
+    
+    #pad 
+    mask = ma.notmasked_edges(dvar_rho, axis = 3)
+    dvar_ = dvar_rho
+    dvar_[:,:,:, mask[0][3][0]-1] = dvar_rho[:,:,:,mask[0][3][0]]
+    dvar_[:,:,:,mask[1][3][0]+1] = dvar_rho[:,:,:,mask[1][3][0]]
+    dvar_pad = ma.concatenate((dvar_rho[:,:,:,0:1], dvar_rho, \
+                               dvar_rho[:,:,:,-2:-1]), axis = 3)
+    
+    #shift to u points
+    dvar_u = GridShift.Rho_to_Upt(dvar_pad)
+    
+    #dx [rho points]
+    x_dist = rt.rho_dist_grd(RomsGrd)[0]
+    
+    #repeat over depth and time
+    _dx = rt.AddDepthTime(RomsFile, x_dist)
+    
+    dx = GridShift.Rho_to_Upt(_dx)
+    
+    #gradient
+    dvar_dx = dvar_u/dx
+    
+    return dvar_dx
+
+
+def x_grad_rho(RomsFile, RomsGrd, varname) :
     """
     Compute x-gradient assuming rectangular grid cells
     """
@@ -26,11 +69,8 @@ def x_grad(RomsFile, RomsGrd, varname) :
     #gradient in x direction on u points
     dvar_u = np.diff(var, n = 1, axis = 3)
     
-    #pad ends
-    dvar_pad = np.concatenate((dvar_u[:,:,:,0:1], dvar_u, dvar_u[:,:,:,-2:-1 ]), axis = 3)
-    
-    #average to rho points
-    dvar = 0.5*(dvar_pad[:,:,:,0:dvar_pad.shape[3]-1] + dvar_pad[:,:,:,1:dvar_pad.shape[3]])
+    #shift u points to rho points
+    dvar = GridShift.Upt_to_Rho(dvar_u)
     
     #lon positions [meters]
     x_dist = rt.rho_dist_grd(RomsGrd)[0]
@@ -43,7 +83,7 @@ def x_grad(RomsFile, RomsGrd, varname) :
     
     return dvar_dx
 
-def y_grad(RomsFile, RomsGrd, varname):
+def y_grad_rho(RomsFile, RomsGrd, varname):
     """
     Compute y-gradient assuming rectangular grid cells
     """
@@ -59,11 +99,8 @@ def y_grad(RomsFile, RomsGrd, varname):
     #compute difference
     dvar_v = np.diff(var, n = 1, axis = 2)
     
-    #pad ends
-    dvar_pad = np.concatenate((dvar_v[:,:,0:1, :], dvar_v, dvar_v[:,:,-2:-1, :]), axis = 2)
-    
-    #average to rho points
-    dvar = 0.5*(dvar_pad[:,:,0:dvar_pad.shape[2]-1, :] + dvar_pad[:,:,1:dvar_pad.shape[3], :])    
+    #shift from v points to rho points
+    dvar = GridShift.Vpt_to_Rho(dvar_v)
     
     #lon positions [meters]
     y_dist = rt.rho_dist_grd(RomsGrd)[1]
@@ -75,6 +112,46 @@ def y_grad(RomsFile, RomsGrd, varname):
     dvar_dy = dvar/dy
     
     return dvar_dy
+
+def y_grad_v(RomsFile, RomsGrd, varname):
+    """
+    Compute y-gradient on v points
+    """
+    if type(varname) == str :
+        #load roms file
+        RomsNC = nc4(RomsFile, 'r')
+        #load variable
+        var = RomsNC.variables[varname][:]
+        
+    else:
+        var = varname #[v points]
+    
+    #compute difference [rho points]
+    dvar_rho = ma.diff(var, n = 1, axis = 2)
+    
+    #pad
+    mask = ma.notmasked_edges(dvar_rho, axis = 2)
+    dvar_ = dvar_rho
+    dvar_[:,:,mask[0][2][0]-1, :] = dvar_rho[:,:,mask[0][2][0], :]
+    dvar_[:,:,mask[1][2][0]+1, :] = dvar_rho[:,:,mask[1][2][0], :]
+    
+    dvar_pad = ma.concatenate((dvar_[:,:,0:1, :],\
+                               dvar_, \
+                               dvar_[:,:,-2:-1, :]), axis = 2)
+    
+    #shift to V points
+    dvar_v = GridShift.Rho_to_Vpt(dvar_pad)
+    
+    #dy
+    y_dist = rt.rho_dist_grd(RomsGrd)[1]
+    dy = rt.AddDepthTime(RomsFile, y_dist)
+    dy_v = GridShift.Rho_to_Vpt(dy)
+    
+    #compute gradient
+    dvar_dy = dvar_v/dy_v
+    
+    return dvar_dy
+    
 
 def z_grad(RomsFile, varname) :
     """
@@ -93,15 +170,14 @@ def z_grad(RomsFile, varname) :
     #vertical difference
     dvar_w = np.diff(var, n = 1, axis = 1)
     
-    #pad ends
-    dvar_pad = np.concatenate((dvar_w[:,0:1, :, :], dvar_w, dvar_w[:,-2:-1, :, :]), axis = 1)
+    #shift w points to rho points
+    dvar = GridShift.Wpt_to_Rho(dvar_w)
     
-    #average to rho points
-    dvar = 0.5*(dvar_pad[:,0:dvar_pad.shape[1]-1,:, :] + dvar_pad[:,1:dvar_pad.shape[1], :, :])    
-    
-    #depth [meters]
+    #depth on w points
     depth = dep._set_depth_T(RomsFile, None, 'w', \
                              RomsNC.variables['h'], RomsNC.variables['zeta'])
+    
+    #difference in depth on rho points
     d_dep = np.diff(depth, n = 1, axis = 1)
     
     #compute gradient
@@ -109,29 +185,7 @@ def z_grad(RomsFile, varname) :
     
     return dvar_dz
 
-def Wpt_to_Upt(dvar_dz, direction) :
-    """
-    convert 'W-point' from vertical difference to 'U,V point'
-    """
-    #horzontal average to box points
-    if direction in [0, 'U', 'u', 'lon'] :
-        dvar_dz_box = 0.5*(dvar_dz[:,:,:, 0:dvar_dz.shape[3]-1] + \
-                           dvar_dz[:,:,:, 1:dvar_dz.shape[3]])
-        
-    elif direction in [1, 'V', 'v', 'lat'] :
-        dvar_dz_box = 0.5*(dvar_dz[:,:, 0:dvar_dz.shape[2]-1, :] + \
-                           dvar_dz[:,:, 1:dvar_dz.shape[2], :])
-    
-    #pad ends on top and bottom of array with adjacent values
-    dvar_dz_pad = np.concatenate((dvar_dz_box[:, 0:1, :, :], dvar_dz_box,\
-                                  dvar_dz_box[:, -2:-1, :, :]), axis = 1)
-    
-    #average box points onto X points
-    dvar_dz_U = 0.5*(dvar_dz_pad[:, 0:dvar_dz_pad.shape[1]-1, :, :] + \
-                   dvar_dz_pad[:, 1:dvar_dz_pad.shape[1], :, :])
-    
-    return dvar_dz_U
-    
+
 
 def x_grad_GridCor(RomsFile, RomsGrd, varname) :
     """
@@ -142,38 +196,43 @@ def x_grad_GridCor(RomsFile, RomsGrd, varname) :
     RomsNC = nc4(RomsFile, 'r')
     
     #compute depth at rho points
-    _depth = dep._set_depth_T(RomsFile, None, 'rho', \
-                              RomsNC.variables['h'],RomsNC.variables['zeta'])
+    _rhodepth = dep._set_depth_T(RomsFile, None, 'rho', \
+                              RomsNC.variables['h'][:], \
+                              RomsNC.variables['zeta'][:])
     
-    #depth difference in vertical
-    dz_z = np.diff(_depth, n = 1, axis = 1)
+    _wdepth = dep._set_depth_T(RomsFile, None, 'w', \
+                               RomsNC.variables['h'][:], \
+                               RomsNC.variables['zeta'][:])
     
-    #depth difference of adjacent grid points
-    dz_x = np.diff(_depth, n = 1, axis = 3)
+    #depth difference in vertical [on rho points]
+    dz_z = np.diff(_wdepth, n = 1, axis = 1)
     
+    #depth difference of adjacent rho points [on u points]
+    _dz_x = np.diff(_rhodepth, n = 1, axis = 3)
+    
+    #shift to rho points
+    dz_x = GridShift.Upt_to_Rho(_dz_x)
+        
     #load variable 
     if type(varname) == str :
         _var = RomsNC.variables[varname][:]
     else :
         _var = varname
     
-    # compute differential
-    dvar_z = np.diff(_var, n = 1, axis = 1)
+    # compute differential [on w points]
+    _dvar_z = np.diff(_var, n = 1, axis = 1)
+    
+    # shift to rho points
+    dvar_z = GridShift.Wpt_to_Rho(_dvar_z)
     
     #distance between rho points in x direction
-    _x_dist = dist(RomsGrd)[0]
+    _x_dist = rt.rho_dist_grd(RomsGrd)[0]
     
     #repeat over depth and time space
-    _DX = np.repeat(np.array(_x_dist)[np.newaxis, :, :], _depth.shape[1], \
-                    axis = 0)
-    dx = np.repeat(np.array(_DX)[np.newaxis, :, :, :], _depth.shape[0], \
-                   axis = 0)
+    dx = rt.AddDepthTime(RomsFile, _x_dist)
     
-    #vertical gradient on tri points
-    dvar_dz_tri = dvar_z/dz_z
-    
-    #average to X points
-    dvar_dz = Wpt_to_Upt(dvar_dz_tri, 'U')
+    #vertical gradient on rho points
+    dvar_dz = dvar_z/dz_z
     
     #correction for roms grid
     dv_dxCor = dvar_dz*(dz_x/dx)
@@ -189,14 +248,23 @@ def y_grad_GridCor(RomsFile, RomsGrd, varname) :
     RomsNC = nc4(RomsFile, 'r')
     
     #compute depth at rho points
-    _depth = dep._set_depth_T(RomsFile, None, 'rho', \
-                              RomsNC.variables['h'],RomsNC.variables['zeta'])
+    _rhodepth = dep._set_depth_T(RomsFile, None, 'rho', \
+                              RomsNC.variables['h'][:], \
+                              RomsNC.variables['zeta'][:])
     
-    #depth difference in vertical
-    dz_z = np.diff(_depth, n = 1, axis = 1)
+    #compute depth at w points 
+    _wdepth = dep._set_depth_T(RomsFile, None, 'w', \
+                               RomsNC.variables['h'][:], \
+                               RomsNC.variables['zeta'][:])
     
-    #depth difference between adjacent rho points
-    dz_y = np.diff(_depth, n = 1, axis = 2)
+    #depth difference in vertical [rho points]
+    dz_z = np.diff(_wdepth, n = 1, axis = 1)
+    
+    #depth difference between adjacent rho points [v points]
+    _dz_y = np.diff(_rhodepth, n = 1, axis = 2)
+    
+    #shift to rho points
+    dz_y = GridShift.Vpt_to_Rho(_dz_y)
         
     #load variable 
     if type(varname) == str :
@@ -204,23 +272,21 @@ def y_grad_GridCor(RomsFile, RomsGrd, varname) :
     else :
         _var = varname
     
-    #compute difference
-    dvar_z = np.diff(_var, n = 1, axis = 1)
+    #compute difference [w points]
+    _dvar_z = ma.diff(_var, n = 1, axis = 1)
+    
+    #shift to rho points
+    dvar_z = GridShift.Wpt_to_Rho(_dvar_z)
     
     #distance between rho points in x and y directions
-    _y_dist = dist(RomsGrd)[1]
+    _y_dist = rt.rho_dist_grd(RomsGrd)[1]
     
     #repeat over depth and time space
-    _DY = np.repeat(np.array(_y_dist)[np.newaxis, :, :], _depth.shape[1], axis = 0)
-    dy = np.repeat(np.array(_DY)[np.newaxis, :, :, :], _depth.shape[0], axis = 0)
+    dy = rt.AddDepthTime(RomsFile, _y_dist)
     
-    # vertical gradient on tri points
-    #vertical gradient on tri points
-    dvar_dz_tri = dvar_z/dz_z
+    #vertical gradient [rho points]
+    dvar_dz = dvar_z/dz_z
     
-    #average to X points
-    dvar_dz = Wpt_to_Upt(dvar_dz_tri, 'V')
-        
     #correction for roms grid
     dv_dyCor = dvar_dz*(dz_y/dy)
     

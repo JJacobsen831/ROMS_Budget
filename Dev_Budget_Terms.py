@@ -12,7 +12,7 @@ import numpy.ma as ma
 import ROMS_Tools_Mask as rt
 from netCDF4 import Dataset as nc4
 import Differential as df
-
+import GridShift
 import Gradients as gr
 import Filters as flt
 import Budget_Terms as bud
@@ -120,13 +120,35 @@ def TermThree(RomsFile, RomsGrd, varname, latbounds, lonbounds) :
     East_Ax = ma.array(Ax_norm, mask = EastFace)
     
     #load diffusion coef
-    _Kv_w = RomsNC.variables['AKv'][:]
+    _Ks_w = RomsNC.variables['AKs'][:]
     
-    #shift to rho points
-    _Kv_rho = 0.5*(_Kv_w[:,0:_Kv_w.shape[1]-1, :, :] + _Kv_w[:, 1:_Kv_w.shape[1], :, :])
+    #shift to u points
+    Ks_u = GridShift.Wpt_to_Upt(_Ks_w)
     
-    #shift pad and shift to u points
-    Kv_upad = np.concatenate
+    #shift to v points
+    Ks_v = GridShift.Wpt_to_Vpt(_Ks_w)
+    
+    #apply face mask to east and west faces
+    East_Ks = ma.array(Ks_u, mask = EastFace)
+    West_Ks = ma.array(Ks_u, mask = WestFace)
+    
+    #apply face mask to north and south faces
+    North_Ks = ma.array(Ks_v, mask = NorthFace)
+    South_Ks = ma.array(Ks_v, mask = SouthFace)
+    
+    #integrad
+    North = -1*North_Ks*North_var*North_Ay
+    South = South_Ks*South_var*South_Ay
+    East = -1*East_Ks*East_var*East_Ax
+    West = West_Ks*West_var*West_Ax
+    
+    #integrate
+    Diff = np.empty(var.shape[0])
+    Diff.fill(np.nan)
+    for n in range(Diff.shape[0]):
+        Diff[n] = ma.sum(North[n,:,:,:]) + ma.sum(South[n,:,:,:]) + ma.sum(West[n,:,:,:]) + ma.sum(East[n,:,:,:])
+    
+    return Diff
     
 
 
