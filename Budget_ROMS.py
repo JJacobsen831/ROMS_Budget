@@ -61,6 +61,5 @@ line1, = plt.plot(Flux_pt, label = 'Flux')
 line2, = plt.plot(Mixing_pt, label = 'Mixing')
 line3, = plt.plot(Diff_pt, label = 'Diffusion')
 line4, = plt.plot(Total, label = 'Total')
-plt.yscale("log")
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
-
+#plt.savefig('Budget_18Aug2020.png')

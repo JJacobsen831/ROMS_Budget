@@ -18,38 +18,44 @@ import obs_depth_JJ as dep
 RomsFile = '/Users/Jasen/Documents/Data/ROMS_TestRuns/wc12_his_5day.nc'
 RomsGrd = '/Users/Jasen/Documents/Data/ROMS_TestRuns/wc12_grd.nc.0'
 
-#select variable
-varname = 'salt'
+
 
 #load bathymetry
 RomsNC = nc4(RomsFile, 'r')
 bathy = RomsNC.variables['h'][:]
 
+#select variable
+Salt = RomsNC.variables['salt'][:]
+Prime2 = (Salt - ma.mean(Salt))**2
+varname = Prime2
+
 #horizontal gradients
-ds_dx = gr.x_grad(RomsFile, RomsGrd, varname)
-ds_dy = gr.y_grad(RomsFile, RomsGrd, varname)
+ds_dx = gr.x_grad_rho(RomsFile, RomsGrd, varname)
+ds_dy = gr.y_grad_rho(RomsFile, RomsGrd, varname)
 
 #grid corrections
-xCor = gr.x_grad_GridCor(RomsFile, RomsGrd, varname)
-yCor = gr.y_grad_GridCor(RomsFile, RomsGrd, varname)
+xCor = gr.x_grad_GridCor_Rho(RomsFile, RomsGrd, varname)
+yCor = gr.y_grad_GridCor_Rho(RomsFile, RomsGrd, varname)
 
 #ratio
-x_rat = np.array(np.abs(xCor)/np.abs(ds_dx))
-y_rat = np.array(np.abs(yCor)/np.abs(ds_dy))
+x_rat = ma.array(ma.abs(xCor)/ma.abs(ds_dx))
+y_rat = ma.array(ma.abs(yCor)/ma.abs(ds_dy))
 
-#median ratio
-_DM_ratx = np.median(x_rat[0,:,:,:], axis = 0)
-_DM_raty = np.median(y_rat[0,:,:,:], axis = 0)
+#depth median ratio
+DM_ratx = ma.median(x_rat[0,:,:,:], axis = 0)
+DM_raty = ma.median(y_rat[0,:,:,:], axis = 0)
 
 #mask land values
-Landx = _DM_ratx == 0.5
-Landy = _DM_raty == 0.5
+Land = ma.getmask(varname)
+Landdt = rt.AddDepthTime(RomsFile, Land)
 
-Landx_ = rt.AddDepthTime(RomsFile, Landx)
-Landy_ = rt.AddDepthTime(RomsFile, Landy)
 
-Xratio = ma.array(x_rat, mask = Landx_).flatten()
-Yratio = ma.array(y_rat, mask = Landy_).flatten()
+Xratio = ma.array(x_rat, mask = Land).flatten()
+Yratio = ma.array(y_rat, mask = Land).flatten()
+
+#remove mask
+Xratio = Xratio[~Xratio.mask]
+Yratio = Yratio[~Yratio.mask]
 
 X_good = Xratio !=0
 Y_good = Yratio !=0
@@ -63,16 +69,11 @@ romsvars = {'h' : RomsNC.variables['h'][:], \
     
 #compute depth at rho points
 depth = dep._set_depth_T(RomsFile, None, 'rho', romsvars['h'], romsvars['zeta'])
-depth = ma.array(depth, mask = Landx_).flatten()
+depth = ma.array(depth, mask = Land).flatten()
 
 _dep = depth[X_good]
 depthLR = _dep[xlog > 1]
 depthLR = depthLR[~depthLR.mask]
-
-
-
-DM_ratx = ma.array(_DM_ratx, mask = Landx)
-DM_raty = ma.array(_DM_raty, mask = Landy)
 
 
 #log median ration, skipping zeros
