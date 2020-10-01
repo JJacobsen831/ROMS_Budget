@@ -12,6 +12,7 @@ from netCDF4 import Dataset as nc4
 import Differential as df
 import ROMS_Tools_Mask as rt
 import Gradients as gr
+import GridShift
 
 def Prime(var_4dim) :
     """
@@ -53,14 +54,14 @@ def TermOne(RomsFile, Mask, Variance) :
 
 def TermTwo(RomsFile, RomsGrd, varname, latbounds, lonbounds) :
     """
-    Flux of variance across open boundaries
+    Advective Flux of variance across open boundaries
     """
     RomsNC = nc4(RomsFile, 'r')
     var = RomsNC.variables[varname][:]
     
     #shift variable from rho points to u and v points
-    _var_u = 0.5*(var[:,:, :, 0:var.shape[3]-1] + var[:,:, :, 1:var.shape[3]])
-    _var_v = 0.5*(var[:,:, 0:var.shape[2]-1, :] + var[:,:, 1:var.shape[2], :])
+    _var_u = GridShift.Rho_to_Upt(var)
+    _var_v = GridShift.Rho_to_Vpt(var)
     
     #define masks for u and v points
     _, U_Mask, V_Mask = rt.RhoUV_Mask(RomsFile, latbounds, lonbounds)
@@ -116,7 +117,7 @@ def TermTwo(RomsFile, RomsGrd, varname, latbounds, lonbounds) :
 
 def TermThree(RomsFile, RomsGrd, varname, latbounds, lonbounds) :
     """
-    Diffusion of variance across open boundaries
+    Diffusive Flux of variance across open boundaries
     """
     RomsNC = nc4(RomsFile, 'r')
     var = RomsNC.variables[varname][:]
